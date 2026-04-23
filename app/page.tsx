@@ -3,10 +3,16 @@
 import { useState } from "react";
 import Image from "next/image";
 import FloatingOtter from "./components/FloatingOtter";
+import RecentFilesCard from "./components/RecentFilesCard";
+import { scanFolder } from "./lib/scanFolder";
+import { getRecentFiles } from "./lib/sortFiles";
+import type { FileInfo } from "./types/file";
 
 export default function Home() {
   const [folderName, setFolderName] = useState<string | null>(null);
-  const [fileCount, setFileCount] = useState<number>(0);
+  const [recentFiles, setRecentFiles] = useState<FileInfo[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [isScanning, setIsScanning] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSelectFolder() {
@@ -18,23 +24,39 @@ export default function Home() {
       return;
     }
 
+    let handle: FileSystemDirectoryHandle;
     try {
       // @ts-expect-error - File System Access API 타입이 아직 TS 표준에 없음
-      const handle = await window.showDirectoryPicker();
-      setFolderName(handle.name);
-
-      // 폴더 안 파일/폴더 개수 세어보기 (첫 통계)
-      let count = 0;
-      for await (const _ of handle.values()) {
-        count++;
-      }
-      setFileCount(count);
+      handle = await window.showDirectoryPicker();
     } catch (e) {
       // 사용자가 취소 눌렀거나 권한 거부
       if ((e as Error).name !== "AbortError") {
         setError("폴더를 여는 중 문제가 생겼어요.");
       }
+      return;
     }
+
+    setFolderName(handle.name);
+    setRecentFiles([]);
+    setTotalCount(0);
+    setIsScanning(true);
+
+    try {
+      const files = await scanFolder(handle);
+      setTotalCount(files.length);
+      setRecentFiles(getRecentFiles(files, 5));
+    } catch (e) {
+      setError(`폴더 스캔 중 문제가 생겼어요: ${(e as Error).message}`);
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  function handleResetFolder() {
+    setFolderName(null);
+    setRecentFiles([]);
+    setTotalCount(0);
+    setIsScanning(false);
   }
 
   const otterState = folderName ? "folder-selected" : "landing";
@@ -84,24 +106,20 @@ export default function Home() {
               </p>
             </>
           ) : (
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#9ED8D4]/30">
-              <p className="text-sm text-[#7BA5A3] mb-2">연결된 폴더</p>
-              <p className="text-2xl font-medium text-[#3D5A58] mb-4">
-                📁 {folderName}
-              </p>
-              <p className="text-sm text-[#7BA5A3]">
-                {fileCount}개 파일·폴더를 찾았어요
-              </p>
+            <>
+              <RecentFilesCard
+                folderName={folderName}
+                totalCount={totalCount}
+                recentFiles={recentFiles}
+                isScanning={isScanning}
+              />
               <button
-                onClick={() => {
-                  setFolderName(null);
-                  setFileCount(0);
-                }}
+                onClick={handleResetFolder}
                 className="mt-6 text-sm text-[#7BA5A3] hover:text-[#3D5A58] underline"
               >
                 다른 폴더 선택
               </button>
-            </div>
+            </>
           )}
 
           {error && (
