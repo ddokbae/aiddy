@@ -48,3 +48,22 @@ body {
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
+
+/* FloatingOtter 말풍선 본문 스크롤바 — Otter Mint 40% 투명도 */
+.scrollbar-aiddy {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(158, 216, 212, 0.4) transparent;
+}
+.scrollbar-aiddy::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-aiddy::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-aiddy::-webkit-scrollbar-thumb {
+  background-color: rgba(158, 216, 212, 0.4);
+  border-radius: 3px;
+}
+.scrollbar-aiddy::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(158, 216, 212, 0.7);
+}

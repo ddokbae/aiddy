@@ -49,9 +49,10 @@ export default function FloatingOtter({
       {isOpen && (
         <div
           className="fixed top-24 right-6 z-40
-                     w-96 bg-white rounded-2xl shadow-2xl
+                     max-w-[420px] w-[90vw] max-h-[80vh]
+                     bg-white rounded-2xl shadow-2xl
                      border border-[#9ED8D4]/40
-                     p-5
+                     flex flex-col
                      animate-slide-in"
         >
           {/* 말풍선 꼬리 */}
@@ -59,22 +60,28 @@ export default function FloatingOtter({
                           bg-white border-t border-l border-[#9ED8D4]/40
                           rotate-45" />
 
-          {state === "landing" ? (
-            <LandingBody />
-          ) : (
-            <FolderSelectedBody
-              folderName={folderName}
-              narration={narration}
-              isAnalyzing={isAnalyzing}
-            />
-          )}
+          {/* 본문 — 길면 스크롤 */}
+          <div className="scrollbar-aiddy overflow-y-auto max-h-[300px] px-5 pt-5 pb-3">
+            {state === "landing" ? (
+              <LandingBody />
+            ) : (
+              <FolderSelectedBody
+                folderName={folderName}
+                narration={narration}
+                isAnalyzing={isAnalyzing}
+              />
+            )}
+          </div>
 
-          <button
-            onClick={() => setIsOpen(false)}
-            className="mt-4 text-xs text-[#7BA5A3] hover:text-[#3D5A58]"
-          >
-            닫기
-          </button>
+          {/* Footer — 본문이 스크롤 돼도 닫기 버튼은 항상 보임 */}
+          <div className="flex-shrink-0 px-5 py-3 border-t border-[#EDF4F2]">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-xs text-[#7BA5A3] hover:text-[#3D5A58]"
+            >
+              닫기
+            </button>
+          </div>
         </div>
       )}
     </>
