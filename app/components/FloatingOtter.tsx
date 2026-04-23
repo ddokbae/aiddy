@@ -116,7 +116,8 @@ export default function FloatingOtter({
       {isOpen && (
         <div
           className="fixed top-24 right-6 z-40
-                     max-w-[420px] w-[90vw] max-h-[80vh]
+                     max-w-[480px] w-[90vw]
+                     max-h-[70vh] md:max-h-[85vh]
                      bg-white rounded-2xl shadow-2xl
                      border border-[#9ED8D4]/40
                      flex flex-col
@@ -127,8 +128,8 @@ export default function FloatingOtter({
                           bg-white border-t border-l border-[#9ED8D4]/40
                           rotate-45" />
 
-          {/* 본문 — 길면 스크롤 */}
-          <div className="scrollbar-aiddy overflow-y-auto max-h-[300px] px-5 pt-5 pb-3">
+          {/* 본문 — 길면 스크롤. min-h-0 으로 flex-col 안에서 정상 축소 */}
+          <div className="scrollbar-aiddy overflow-y-auto min-h-0 max-h-[420px] px-6 pt-5 pb-4">
             {state === "landing" ? (
               <LandingBody />
             ) : (
@@ -244,7 +245,7 @@ function FolderSelectedBody({
           <PulseDots />
         </p>
       ) : narration ? (
-        <p className="text-sm text-[#3D5A58]/90 leading-relaxed whitespace-pre-wrap">
+        <p className="text-[15px] text-[#3D5A58]/90 leading-[1.75] whitespace-pre-wrap">
           {narration}
         </p>
       ) : (
