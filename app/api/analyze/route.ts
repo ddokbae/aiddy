@@ -1,11 +1,19 @@
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  GoogleGenerativeAI,
+  GoogleGenerativeAIFetchError,
+  GoogleGenerativeAIResponseError,
+  GoogleGenerativeAIRequestInputError,
+} from "@google/generative-ai";
 import type {
   AnalyzeRequest,
   AnalyzeResponse,
 } from "@/app/types/analysis";
 
-const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 600;
+// NOTE: 지금은 Gemini 단일 구현. 나중에 Claude/GPT/Gemini 런타임 스위칭이 필요하면
+// app/lib/llm.ts 같은 추상화 레이어로 리팩토링 예정.
+const MODEL = "gemini-2.5-flash";
+const MAX_OUTPUT_TOKENS = 600;
+const TEMPERATURE = 0.7;
 
 const SYSTEM_PROMPT = `너는 Aiddy, 비전공 개발자의 AI 학습 동반자야.
 
@@ -46,11 +54,11 @@ function jsonError(status: number, message: string): Response {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return jsonError(
       500,
-      "서버에 ANTHROPIC_API_KEY가 설정돼있지 않아요. .env.local 확인해주세요.",
+      "서버에 GEMINI_API_KEY가 설정돼있지 않아요. .env.local 확인해주세요.",
     );
   }
 
@@ -65,47 +73,50 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError(400, "folderName과 recentFiles가 필요해요.");
   }
 
-  const client = new Anthropic({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: SYSTEM_PROMPT,
+    generationConfig: {
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      temperature: TEMPERATURE,
+    },
+  });
 
   try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      thinking: { type: "disabled" },
-      output_config: { effort: "low" },
-      system: [
-        {
-          type: "text",
-          text: SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [{ role: "user", content: buildUserPrompt(body) }],
-    });
-
-    const narration = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("")
-      .trim();
+    const result = await model.generateContent(buildUserPrompt(body));
+    const narration = result.response.text().trim();
 
     if (!narration) {
-      return jsonError(502, "Claude가 빈 응답을 줬어요. 다시 시도해주세요.");
+      return jsonError(502, "Gemini가 빈 응답을 줬어요. 다시 시도해주세요.");
     }
 
     const success: AnalyzeResponse = { narration };
     return Response.json(success);
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) {
-      return jsonError(401, "ANTHROPIC_API_KEY가 유효하지 않아요.");
-    }
-    if (error instanceof Anthropic.RateLimitError) {
-      return jsonError(429, "Claude API 호출 한도를 잠시 초과했어요. 조금 뒤 다시 시도해주세요.");
-    }
-    if (error instanceof Anthropic.APIError) {
+    if (error instanceof GoogleGenerativeAIFetchError) {
+      if (error.status === 429) {
+        return jsonError(
+          429,
+          "Gemini 호출 한도를 잠시 초과했어요. 조금 뒤 다시 시도해주세요.",
+        );
+      }
+      if (error.status === 401 || error.status === 403) {
+        return jsonError(401, "GEMINI_API_KEY가 유효하지 않아요.");
+      }
       return jsonError(
         error.status ?? 500,
-        `Claude API 오류: ${error.message}`,
+        `Gemini API 오류: ${error.message}`,
+      );
+    }
+    if (error instanceof GoogleGenerativeAIRequestInputError) {
+      return jsonError(400, `요청 내용이 잘못됐어요: ${error.message}`);
+    }
+    if (error instanceof GoogleGenerativeAIResponseError) {
+      // safety 차단 등 응답 단계 오류
+      return jsonError(
+        502,
+        `Gemini 응답 오류: ${error.message}`,
       );
     }
     const message = error instanceof Error ? error.message : "알 수 없는 오류";
