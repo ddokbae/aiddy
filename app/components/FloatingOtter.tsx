@@ -1,26 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
+import type { FileInfo } from "@/app/types/file";
+import { saveSnapshot } from "@/app/lib/snapshots";
 
 interface FloatingOtterProps {
   /** 현재 앱 상태에 따라 말풍선 내용 바뀜 */
   state: "landing" | "folder-selected";
   /** 연결된 폴더 이름 */
   folderName?: string;
-  /** Claude가 생성한 동적 해설 (folder-selected 상태일 때만 사용) */
+  /** 전체 파일 수 (저장에 사용) */
+  totalCount?: number;
+  /** 최근 수정 파일 목록 (저장에 사용) */
+  recentFiles?: FileInfo[];
+  /** Gemini가 생성한 동적 해설 (folder-selected 상태일 때만 사용) */
   narration?: string | null;
   /** 해설 생성 중 여부 (folder-selected 상태일 때만 사용) */
   isAnalyzing?: boolean;
 }
 
+type SaveStatus =
+  | { kind: "idle" }
+  | { kind: "saving" }
+  | { kind: "saved" }
+  | { kind: "error"; message: string };
+
 export default function FloatingOtter({
   state,
   folderName,
+  totalCount,
+  recentFiles,
   narration,
   isAnalyzing,
 }: FloatingOtterProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: "idle" });
+  // 같은 narration 이미 저장 됐으면 버튼 비활성화 — 중복 저장 방지
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+
+  const currentKey =
+    folderName && narration ? `${folderName}::${narration}` : null;
+
+  // narration / folder 바뀌면 저장 상태 리셋
+  useEffect(() => {
+    setSaveStatus({ kind: "idle" });
+  }, [currentKey]);
+
+  // "저장됐어요!" 피드백 2초 유지 후 idle 로
+  useEffect(() => {
+    if (saveStatus.kind !== "saved") return;
+    const t = setTimeout(() => setSaveStatus({ kind: "idle" }), 2000);
+    return () => clearTimeout(t);
+  }, [saveStatus]);
+
+  const isAlreadySaved = currentKey !== null && savedKey === currentKey;
+  const canSave =
+    state === "folder-selected" &&
+    !!folderName &&
+    !!narration &&
+    !!recentFiles &&
+    !isAlreadySaved &&
+    saveStatus.kind !== "saving";
+
+  async function handleSave() {
+    if (!canSave || !folderName || !narration || !recentFiles) return;
+    setSaveStatus({ kind: "saving" });
+    try {
+      await saveSnapshot({
+        folder_name: folderName,
+        total_count: totalCount ?? 0,
+        narration,
+        recent_files: recentFiles.map((f) => ({
+          name: f.name,
+          kind: f.kind,
+          path: f.path,
+          lastModified: f.lastModified.toISOString(),
+        })),
+      });
+      setSavedKey(currentKey);
+      setSaveStatus({ kind: "saved" });
+    } catch (e) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : "저장소랑 연결이 잠깐 끊어졌어요. 다시 시도해주세요 🦦";
+      setSaveStatus({ kind: "error", message });
+    }
+  }
 
   return (
     <>
@@ -71,13 +138,28 @@ export default function FloatingOtter({
                 isAnalyzing={isAnalyzing}
               />
             )}
+            {saveStatus.kind === "error" && (
+              <p className="mt-3 text-xs text-red-500">
+                {saveStatus.message}
+              </p>
+            )}
           </div>
 
-          {/* Footer — 본문이 스크롤 돼도 닫기 버튼은 항상 보임 */}
-          <div className="flex-shrink-0 px-5 py-3 border-t border-[#EDF4F2]">
+          {/* Footer — 본문이 스크롤 돼도 버튼은 항상 보임 */}
+          <div className="flex-shrink-0 px-5 py-3 border-t border-[#EDF4F2] flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {state === "folder-selected" && narration && (
+                <SaveButton
+                  status={saveStatus}
+                  isAlreadySaved={isAlreadySaved}
+                  canSave={canSave}
+                  onClick={handleSave}
+                />
+              )}
+            </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-xs text-[#7BA5A3] hover:text-[#3D5A58]"
+              className="text-xs text-[#7BA5A3] hover:text-[#3D5A58] flex-shrink-0"
             >
               닫기
             </button>
@@ -85,6 +167,46 @@ export default function FloatingOtter({
         </div>
       )}
     </>
+  );
+}
+
+function SaveButton({
+  status,
+  isAlreadySaved,
+  canSave,
+  onClick,
+}: {
+  status: SaveStatus;
+  isAlreadySaved: boolean;
+  canSave: boolean;
+  onClick: () => void;
+}) {
+  if (status.kind === "saved") {
+    return (
+      <span className="text-sm text-[#7BA5A3]">저장됐어요! ✓</span>
+    );
+  }
+  if (isAlreadySaved) {
+    return (
+      <span className="text-sm text-[#7BA5A3]/70">저장됨</span>
+    );
+  }
+  if (status.kind === "saving") {
+    return (
+      <span className="text-sm text-[#7BA5A3] flex items-center gap-2">
+        <span className="inline-block w-3 h-3 border-2 border-[#9ED8D4] border-t-transparent rounded-full animate-spin" />
+        저장 중...
+      </span>
+    );
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={!canSave}
+      className="text-sm text-[#7BA5A3] hover:text-[#3D5A58] disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      💾 이 순간 저장
+    </button>
   );
 }
 

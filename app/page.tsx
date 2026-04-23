@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import FloatingOtter from "./components/FloatingOtter";
 import RecentFilesCard from "./components/RecentFilesCard";
 import { scanFolder } from "./lib/scanFolder";
@@ -72,6 +73,8 @@ export default function Home() {
       <FloatingOtter
         state={otterState}
         folderName={folderName ?? undefined}
+        totalCount={totalCount}
+        recentFiles={recentFiles}
         narration={narration}
         isAnalyzing={isAnalyzing}
       />
@@ -112,6 +115,12 @@ export default function Home() {
               <p className="mt-6 text-sm text-[#7BA5A3]/70">
                 감지할 프로젝트 폴더를 선택해주세요 🐚
               </p>
+              <Link
+                href="/timeline"
+                className="mt-6 inline-block text-sm text-[#7BA5A3] hover:text-[#3D5A58] transition-colors"
+              >
+                저장된 순간 보기 →
+              </Link>
             </>
           ) : (
             <>
