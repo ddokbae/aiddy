@@ -6,6 +6,7 @@ import FloatingOtter from "./components/FloatingOtter";
 import RecentFilesCard from "./components/RecentFilesCard";
 import { scanFolder } from "./lib/scanFolder";
 import { getRecentFiles } from "./lib/sortFiles";
+import { useAnalysis } from "./hooks/useAnalysis";
 import type { FileInfo } from "./types/file";
 
 export default function Home() {
@@ -60,11 +61,19 @@ export default function Home() {
 
   const otterState = folderName ? "folder-selected" : "landing";
 
+  const {
+    narration,
+    isAnalyzing,
+    error: analysisError,
+  } = useAnalysis(folderName, recentFiles);
+
   return (
     <>
       <FloatingOtter
         state={otterState}
         folderName={folderName ?? undefined}
+        narration={narration}
+        isAnalyzing={isAnalyzing}
       />
 
       <main className="min-h-screen flex flex-col items-center justify-center px-6 py-16 bg-[#EDF4F2]">
@@ -112,6 +121,11 @@ export default function Home() {
                 recentFiles={recentFiles}
                 isScanning={isScanning}
               />
+              {analysisError && (
+                <p className="mt-4 text-xs text-[#7BA5A3]/80">
+                  🦦 해설을 못 가져왔어요: {analysisError}
+                </p>
+              )}
               <button
                 onClick={handleResetFolder}
                 className="mt-6 text-sm text-[#7BA5A3] hover:text-[#3D5A58] underline"
