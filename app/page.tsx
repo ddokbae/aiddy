@@ -26,7 +26,6 @@ export default function Home() {
 
     let handle: FileSystemDirectoryHandle;
     try {
-      // @ts-expect-error - File System Access API 타입이 아직 TS 표준에 없음
       handle = await window.showDirectoryPicker();
     } catch (e) {
       // 사용자가 취소 눌렀거나 권한 거부
