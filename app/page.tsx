@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import FloatingOtter from "./components/FloatingOtter";
 
 export default function Home() {
@@ -47,7 +48,16 @@ export default function Home() {
 
       <main className="min-h-screen flex flex-col items-center justify-center px-6 py-16 bg-[#EDF4F2]">
         <div className="max-w-2xl w-full text-center">
-          <div className="mb-8 text-6xl">🦦</div>
+          <div className="mb-8 flex justify-center">
+            <Image
+              src="/otter-hero.png"
+              alt="Aiddy 해달 마스코트"
+              width={240}
+              height={240}
+              preload
+              className="rounded-full"
+            />
+          </div>
 
           <h1 className="text-5xl font-semibold tracking-tight text-[#3D5A58] mb-4">
             Aiddy

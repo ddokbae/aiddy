@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 interface FloatingOtterProps {
   /** 현재 앱 상태에 따라 말풍선 내용 바뀜 */
@@ -33,17 +34,22 @@ export default function FloatingOtter({ state, folderName }: FloatingOtterProps)
       {/* 플로팅 아이콘 — 우측 상단 고정 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-6 right-6 z-50 
-                   w-14 h-14 rounded-full 
-                   bg-white shadow-lg border border-[#9ED8D4]/40
+        className="fixed top-6 right-6 z-50
+                   w-14 h-14 rounded-full overflow-hidden
+                   bg-transparent shadow-lg border border-[#9ED8D4]/40
                    flex items-center justify-center
-                   text-3xl
                    hover:scale-110 hover:shadow-xl
                    transition-all duration-300
                    animate-float"
         aria-label="Aiddy 해달 — 클릭해서 도움말 보기"
       >
-        🦦
+        <Image
+          src="/otter-main.png"
+          alt="Aiddy 해달"
+          width={56}
+          height={56}
+          className="w-full h-full object-cover rounded-full"
+        />
       </button>
 
       {/* 말풍선 — 클릭 시에만 보임 */}
